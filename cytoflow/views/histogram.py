@@ -132,9 +132,10 @@ class HistogramView(HasStrictTraits):
 
             bins = new_bins
         else:
-            bin_width = (xmax - xmin) / num_bins
-            bins = np.arange(xmin, xmax, bin_width)
+            bins = np.linspace(xmin, xmax, num_bins)
             bins = np.append(bins, xmax)
+            
+            #print bins
         
         kwargs.setdefault('bins', bins) 
 

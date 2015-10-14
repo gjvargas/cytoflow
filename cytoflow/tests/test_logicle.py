@@ -48,4 +48,17 @@ class TestLogicle(unittest.TestCase):
         el.estimate(self.ex)
         ex2 = el.apply(self.ex)
         
+    def test_logicle_fsc_w(self):
+        """
+        The FSC-W channel gives a W that is too big.
+        """
+        import warnings
+        from cytoflow.utility import CytoflowOpWarning
+        
+        el = flow.LogicleTransformOp(channels = ['FSC-W'])
+        with warnings.catch_warnings(record = True) as w:
+            el.estimate(self.ex)
+            self.assertEqual(len(w), 1)
+            self.assertTrue(issubclass(w[-1].category, CytoflowOpWarning))
+        
     ### TODO - test the apply function error checking

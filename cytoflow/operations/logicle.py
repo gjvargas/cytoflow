@@ -1,9 +1,11 @@
+from __future__ import division
 from traits.api import HasStrictTraits, provides, Str, List, Float, Dict, \
                         Constant
 import math
 import numpy as np
+from warnings import warn
 
-from cytoflow.utility import CytoflowOpError
+from cytoflow.utility import CytoflowOpError, CytoflowOpWarning
 from logicle_ext.Logicle import Logicle
 from cytoflow.operations import IOperation
 
@@ -96,6 +98,10 @@ class LogicleTransformOp(HasStrictTraits):
 
         if not experiment:
             raise CytoflowOpError("no experiment specified")
+                
+        if not set(self.channels).issubset(set(experiment.channels)):
+            raise CytoflowOpError("self.channels isn't a subset "
+                                  "of experiment.channels")
         
         if self.r <= 0 or self.r >= 1:
             raise CytoflowOpError("r must be between 0 and 1")
@@ -114,12 +120,22 @@ class LogicleTransformOp(HasStrictTraits):
             if(not neg_values.empty):
                 r_value = neg_values.quantile(self.r).item()
                 self.W[channel] = (self.M - math.log10(t/math.fabs(r_value)))/2
+                
+                if 2.0 * self.W[channel] > self.M:
+                    warn("There is a lot of negative data in channel {0}, "
+                         "clipping linear range."
+                         .format(channel),
+                         CytoflowOpWarning)
+                    self.W[channel] = (self.M / 2 - 0.1)
             else:
                 # ... unless there aren't any negative values, in which case
                 # you probably shouldn't use this transform
-                raise CytoflowOpError("You shouldn't use the Logicle transform "
-                                      "for channels without any negative data. "
-                                      "Try a hlog or a log10 transform instead.")
+                warn("Channel {0} doesn't have any negative data, using a "
+                     "default width for the linear range. "
+                     "(Try a log10 transform instead?)"
+                    .format(channel),
+                    CytoflowOpWarning)
+                self.W[channel] = 0.5
     
     def apply(self, experiment):
         """Applies the Logicle transform to channels"""
@@ -155,12 +171,22 @@ class LogicleTransformOp(HasStrictTraits):
                 raise CytoflowOpError("W for channel {0} must be > 0"
                                       .format(channel))
             
+            if 2.0 * self.W[channel] > self.M:
+                raise CytoflowOpError("W for channel {0} is too big, "
+                                      "must be <= {1}"
+                                      .format(channel, (self.M / 2)))
+            
             if not channel in self.A:
                 raise CytoflowOpError("A wasn't set for channel {0}"
                                       .format(channel))
                 
             if self.A[channel] < 0:
                 raise CytoflowOpError("A for channel {0} must be >= 0"
+                                      .format(channel))
+                
+            if (-self.A[channel] > self.W[channel] 
+                or self.A[channel] + self.W[channel] > self.M - self.W[channel]):
+                raise CytoflowOpError("A for channel {0} is too big"
                                       .format(channel))
         
         new_experiment = experiment.clone()
@@ -178,5 +204,26 @@ class LogicleTransformOp(HasStrictTraits):
             new_experiment[channel] = logicle_fwd(new_experiment[channel])
             new_experiment.metadata[channel]["xforms"].append(logicle_fwd)
             new_experiment.metadata[channel]["xforms_inv"].append(logicle_rev)
-            
+            new_experiment.metadata[channel]["range"] = 1.0
         return new_experiment
+    
+if __name__ == '__main__':
+    import cytoflow as flow
+    import fcsparser
+    
+    tube1 = fcsparser.parse('../../cytoflow/tests/data/Plate01/RFP_Well_A3.fcs',
+                            reformat_meta = True)
+
+    tube2 = fcsparser.parse('../../cytoflow/tests/data/Plate01/CFP_Well_A4.fcs',
+                            reformat_meta = True)
+    
+    ex = flow.Experiment()
+    ex.add_conditions({"Dox" : "float"})
+    
+    ex.add_tube(tube1, {"Dox" : 10.0})
+    ex.add_tube(tube2, {"Dox" : 1.0})
+    
+    el = LogicleTransformOp(channels = ["FSC-W"])
+    el.estimate(ex)
+    ex2 = el.apply(ex)
+    print "done"

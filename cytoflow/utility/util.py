@@ -17,6 +17,15 @@ class CytoflowOpError(CytoflowError):
 class CytoflowViewError(CytoflowError):
     pass
 
+class CytoflowWarning(UserWarning):
+    pass
+
+class CytoflowOpWarning(CytoflowWarning):
+    pass
+
+class CytoflowViewWarning(CytoflowWarning):
+    pass
+
 def iqr(a):
     """Calculate the IQR for an array of numbers."""
     a = np.asarray(a)
