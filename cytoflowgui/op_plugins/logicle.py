@@ -3,12 +3,13 @@ Created on Feb 24, 2015
 
 @author: brian
 """
-from traits.api import provides, Callable, on_trait_change
+from traits.api import provides, Callable, Constant
 from traitsui.api import Controller, View, Item, CheckListEditor
 from envisage.api import Plugin, contributes_to
 from pyface.api import ImageResource
 
 from cytoflow import LogicleTransformOp
+from cytoflow.operations.i_operation import IOperation
 from cytoflowgui.op_plugins.i_op_plugin \
     import OpHandlerMixin, IOperationPlugin, OP_PLUGIN_EXT, PluginOpMixin
 from cytoflowgui.color_text_editor import ColorTextEditor
@@ -19,15 +20,18 @@ class LogicleHandler(Controller, OpHandlerMixin):
     """
     
     def default_traits_view(self):
-        return View(Item('object.name'),
-                    Item('object.W'),
-                    Item('object.M'),
-                    Item('object.A'),
-                    Item('object.r'),
-                    Item('object.channels',
+        return View(Item('object.channels',
                          editor = CheckListEditor(name='handler.previous_channels',
                                                   cols = 2),
                          style = 'custom'),
+                    Item('object.r',
+                         label = "Estimate\nquantile"),
+                    Item('handler.wi.warning',
+                         label = 'Warning',
+                         visible_when = 'handler.wi.warning',
+                         editor = ColorTextEditor(foreground_color = "#000000",
+                                                  background_color = "#fffe91",
+                                                  word_wrap = True)),
                     Item('handler.wi.error',
                          label = 'Error',
                          visible_when = 'handler.wi.error',
@@ -35,21 +39,15 @@ class LogicleHandler(Controller, OpHandlerMixin):
                                                   background_color = "#ff9191",
                                                   word_wrap = True)))
         
-    def setattr(self, info, obj, name, value):
-        super(LogicleHandler, self).setattr(info, obj, name, value)
-        #Controller.setattr(self, info, object, name, value)
-        
+@provides(IOperation)
 class LogicleTransformPluginOp(LogicleTransformOp, PluginOpMixin):
     handler_factory = Callable(LogicleHandler)
-    
-    @on_trait_change('channels[]')
-    def _on_channels_changed(self):
-        for channel in self.channels:
-            if channel not in self.W:
-                self.W[channel] = 0.5
-            if channel not in self.A:
-                self.A[channel] = 0.0
-    
+    name = Constant("Logicle")
+#     
+#     def apply(self, experiment):
+#         super(LogicleTransformPluginOp, self).estimate(experiment)
+#         return super(LogicleTransformPluginOp, self).apply(experiment)
+
 @provides(IOperationPlugin)
 class LogiclePlugin(Plugin):
     """

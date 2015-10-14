@@ -14,6 +14,7 @@ from cytoflow.views.i_view import IView
 from cytoflow.utility import CytoflowError
 from pyface.qt import QtGui
 from pyface.tasks.api import Task
+import warnings
 
 class WorkflowItem(HasStrictTraits):
     """        
@@ -73,13 +74,16 @@ class WorkflowItem(HasStrictTraits):
     
     # is the wi valid?
     # MAGIC: first value is the default
-    valid = Enum("invalid", "updating", "valid", transient = True)
+    status = Enum("invalid", "estimating", "applying", "valid", transient = True)
     
     # if we errored out, what was the error string?
     error = Str(transient = True)
+
+    # if we raised a warning, what was the warning string?
+    warning = Str(transient = True)
     
     # the icon for the vertical notebook view.  Qt specific, sadly.
-    icon = Property(depends_on = 'valid', transient = True)
+    icon = Property(depends_on = 'status', transient = True)
     
     def default_traits_view(self):
         return View(Item('handler',
@@ -90,30 +94,39 @@ class WorkflowItem(HasStrictTraits):
         """
         Called by the controller to update this wi
         """
-    
-        self.valid = "updating"
+        
         self.error = ""
+        self.warning = ""
         self.result = None
         
         prev_result = self.previous.result if self.previous else None
         
-        try:
-            self.result = self.operation.apply(prev_result)
-        except CytoflowError as e:
-            self.valid = "invalid"
-            self.error = e.__str__()    
-            print self.error
-            return
+        with warnings.catch_warnings(record = True) as w:
+            try:
+                if (hasattr(self.operation, "estimate") and
+                    callable(getattr(self.operation, "estimate"))):  
+                    self.status = "estimating"
+                    self.operation.estimate(prev_result)
+                self.status = "applying"
+                self.result = self.operation.apply(prev_result)
+            except CytoflowError as e:
+                self.status = "invalid"
+                self.error = e.__str__()    
+                print self.error
+                return
+            
+            if len(w) > 0:
+                self.warning = w[0].message.__str__()
 
-        self.valid = "valid"
+        self.status = "valid"
            
     @cached_property
     def _get_icon(self):
-        if self.valid == "valid":
+        if self.status == "valid":
             return QtGui.QStyle.SP_DialogOkButton
-        elif self.valid == "updating":
+        elif self.status == "estimating" or self.status == "applying":
             return QtGui.QStyle.SP_BrowserReload
-        else: # self.valid == "invalid" or None
+        else: # self.status == "invalid" or None
             return QtGui.QStyle.SP_BrowserStop
 
     @cached_property
