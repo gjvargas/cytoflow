@@ -139,15 +139,15 @@ class ViewDockPane(DockPane):
     def _set_enabled(self, obj, name, old, new):
         self._window.setEnabled(new)
             
-    @on_trait_change('task:model:selected.valid')
-    def _on_model_valid_changed(self, obj, name, old, new):
+    @on_trait_change('task:model:selected.status')
+    def _on_model_status_changed(self, obj, name, old, new):
 #        print "valid changed: {0}".format(threading.current_thread())
         
         if not new:
             return
         
         if name == 'selected':
-            new = new.valid
+            new = new.status
                 
         # redirect to the UI thread
         self.enabled = True if new == "valid" else False

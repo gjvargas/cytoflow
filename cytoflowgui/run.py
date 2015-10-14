@@ -24,11 +24,17 @@ from op_plugins import ImportPlugin, ThresholdPlugin, HLogPlugin, RangePlugin, \
                        BinningPlugin
 from view_plugins import HistogramPlugin, HexbinPlugin, ScatterplotPlugin, \
                          BarChartPlugin, Stats1DPlugin
-                         
+               
+from cytoflow.utility import CytoflowOpWarning, CytoflowViewWarning          
 import sys
+import warnings
 
 def run_gui():
-    
+  
+    # always show us runtime warnings
+    warnings.simplefilter('always', CytoflowOpWarning)
+    warnings.simplefilter('always', CytoflowViewWarning)
+      
     logging.basicConfig(level=logging.DEBUG)
     
     debug = ("--debug" in sys.argv)

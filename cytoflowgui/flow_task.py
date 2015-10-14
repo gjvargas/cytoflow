@@ -24,9 +24,11 @@ from cytoflowgui.op_plugins import IOperationPlugin, ImportPlugin, OP_PLUGIN_EXT
 from cytoflowgui.view_plugins import IViewPlugin, VIEW_PLUGIN_EXT
 from cytoflowgui.workflow_item import WorkflowItem
 
+from traits.trait_notifiers import ui_thread
 
 from util import UniquePriorityQueue
 import threading
+import thread
 import pickle as pickle
 
 # setup the worker thread
@@ -220,7 +222,7 @@ class FlowTask(Task):
         
         wi = self.model.workflow[0]
         while True:
-            wi.valid = "invalid"
+            wi.status = "invalid"
             with self.worker_lock:
                 self.to_update.put_nowait((self.model.workflow.index(wi), wi))
             if wi.next:
@@ -365,10 +367,18 @@ class FlowTask(Task):
     @on_trait_change("model:selected:operation:+")
     def operation_parameters_updated(self): 
         
+        global ui_thread
+        
         # invalidate this workflow item and all the ones following it
         wi = self.model.selected
+        
+        # if the handler was called because of an update from estimate()
+        # (and was not on the ui thread!) don't try to update the wi
+        if wi.status == "estimating" and thread.get_ident() != ui_thread:
+            return
+        
         while True:
-            wi.valid = "invalid"
+            wi.status = "invalid"
             with self.worker_lock:
                 self.to_update.put_nowait((self.model.workflow.index(wi), wi))
             if wi.next:
