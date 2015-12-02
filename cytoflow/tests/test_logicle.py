@@ -61,8 +61,12 @@ class TestLogicle(unittest.TestCase):
             self.assertEqual(len(w), 1)
             self.assertTrue(issubclass(w[-1].category, CytoflowOpWarning))
         
+<<<<<<< HEAD
 <<<<<<< Upstream, based on master
     ### TODO - test the apply function error checking
 =======
     ### TODO - test the apply function error checking
 >>>>>>> 0808d92 Basic support for calling estimate() from the GUI before apply().
+=======
+    ### TODO - test the apply function error checking
+>>>>>>> branch 'gui_estimate' of git@github.com:bpteague/cytoflow.git
