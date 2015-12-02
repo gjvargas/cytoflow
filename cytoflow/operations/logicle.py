@@ -226,4 +226,8 @@ if __name__ == '__main__':
     el = LogicleTransformOp(channels = ["FSC-W"])
     el.estimate(ex)
     ex2 = el.apply(ex)
+<<<<<<< Upstream, based on master
     print "done"
+=======
+    print "done"
+>>>>>>> 0808d92 Basic support for calling estimate() from the GUI before apply().
