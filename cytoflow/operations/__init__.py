@@ -22,6 +22,7 @@ from threshold import ThresholdOp
 from range import RangeOp
 from range2d import Range2DOp
 from polygon import PolygonOp
+from kmeans import KMeansOp
 
 # transforms
 from hlog import HlogTransformOp

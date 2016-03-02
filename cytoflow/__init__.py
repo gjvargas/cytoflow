@@ -20,6 +20,7 @@ from operations.threshold import ThresholdOp
 from operations.range import RangeOp
 from operations.range2d import Range2DOp
 from operations.polygon import PolygonOp
+from operations.kmeans import KMeansOp
 from operations.hlog import HlogTransformOp
 from operations.logicle import LogicleTransformOp
 from operations.log import LogTransformOp
