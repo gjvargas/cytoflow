@@ -25,7 +25,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from traits.api import provides, Callable, Str
+from traits.api import provides, Callable, Str, Undefined, Delegate
 from traitsui.api import View, Item, Controller, EnumEditor, VGroup
 from envisage.api import Plugin, contributes_to
 from pyface.api import ImageResource
@@ -84,7 +84,24 @@ class HistogramHandler(Controller, ViewHandlerMixin):
                                                   background_color = "#ff9191"))))
     
 class HistogramPluginView(HistogramView, PluginViewMixin):
-    handler_factory = Callable(HistogramHandler)
+    handler_factory = Callable(HistogramHandler, transient=True)
+
+    def code(self, name, op_name, ex_name):
+        output = "%s = " % name
+        output += "flow.HistogramView(\n"
+        for trait in self.traits():
+            t = self.trait(trait)
+            if t and not t.transient and not t.is_trait_type(Delegate):
+                value = getattr(self, trait)
+                if value is not None and value != '' and value is not Undefined:
+                    if isinstance(value, basestring):
+                        output += "\t%s = '%s',\n" % (trait, value)
+                    else:
+                        output += "\t%s = %s,\n" % (trait, value)
+        output += ")\n"
+        output += "%s.plot(%s)" % (name, ex_name)
+
+        return output
 
     plotfacet = Str
 

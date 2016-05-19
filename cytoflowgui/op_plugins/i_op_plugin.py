@@ -62,7 +62,10 @@ class IOperationPlugin(Interface):
         """
 
 class PluginOpMixin(HasTraits):
-    pass
+    def code(self, name):
+        """
+        Return code used to initialize the underlying operation.
+        """
 
 shared_op_traits = Group(Item('context.warning',
                               label = 'Warning',

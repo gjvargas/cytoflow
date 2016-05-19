@@ -16,6 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from traits.api import provides, Callable
+from traits.api import provides, Callable, Undefined, Delegate
 from traitsui.api import View, Item, EnumEditor, Controller, VGroup, TextEditor
 from envisage.api import Plugin, contributes_to
 from pyface.api import ImageResource
@@ -73,16 +74,51 @@ class ThresholdViewHandler(Controller, ViewHandlerMixin):
                                                   background_color = "#ff9191"))))
 
 class ThresholdSelectionView(ThresholdSelection, PluginViewMixin):
-    handler_factory = Callable(ThresholdViewHandler)
+    handler_factory = Callable(ThresholdViewHandler, transient=True)
+
+    def code(self, name, op_name, ex_name):
+        output = "%s = " % name
+        output += "flow.operations.threshold.ThresholdSelection(\n"
+        for trait in self.traits():
+            t = self.trait(trait)
+            if t and not t.transient and not t.is_trait_type(Delegate):
+                value = getattr(self, trait)
+                if value is not None and value != '' and value is not Undefined:
+                    if isinstance(value, basestring):
+                        output += "\t%s = '%s',\n" % (trait, value)
+                    elif isinstance(value, ThresholdOp):
+                        output += "\top = %s,\n" % (op_name)
+                    else:
+                        output += "\t%s = %s,\n" % (trait, value)
+        output += ")\n"
+        output += "%s.plot(%s)" % (name, ex_name)
+
+        return output
     
     def plot_wi(self, wi):
         self.plot(wi.previous.result)
     
 class ThresholdPluginOp(ThresholdOp, PluginOpMixin):
-    handler_factory = Callable(ThresholdHandler)
+    handler_factory = Callable(ThresholdHandler, transient=True)
      
     def default_view(self, **kwargs):
         return ThresholdSelectionView(op = self, **kwargs)
+    
+    def code(self, name):
+        output = "%s = " % name
+        output += "flow.ThresholdOp(\n"
+        for trait in self.traits():
+            t = self.trait(trait)
+            if t and not t.transient:
+                value = getattr(self, trait)
+                if value is not None and value != '' and value is not Undefined:
+                    if isinstance(value, basestring):
+                        output += "\t%s = '%s',\n" % (trait, value)
+                    else:
+                        output += "\t%s = %s,\n" % (trait, value)
+        output += ")"
+
+        return output
 
 @provides(IOperationPlugin)
 class ThresholdPlugin(Plugin):

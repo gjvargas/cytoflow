@@ -227,8 +227,8 @@ class FlowTask(Task):
                             action = 'save as',
                             wildcard = '*.ipynb')
         if dialog.open() == OK:
-            writer = JupyterNotebookWriter(file = dialog.path)
-            writer.export(self.workflow)
+            writer = IPythonNotebookWriter(file_name = dialog.path)
+            writer.export(self.model.workflow)
    
     
     def on_prefs(self):

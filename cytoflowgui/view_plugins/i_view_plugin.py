@@ -66,6 +66,10 @@ class PluginViewMixin(HasTraits):
         else:
             self.plot(wi.result)
 
+    def code(self, name, op_name, ex_name):
+        """
+        Return code used to initialize the underlying view.
+        """
 
 class ViewHandlerMixin(HasTraits):
     """

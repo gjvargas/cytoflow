@@ -21,7 +21,7 @@ Created on Apr 23, 2015
 @author: brian
 '''
 
-from traits.api import provides, Callable
+from traits.api import provides, Callable, Undefined, Delegate
 from traitsui.api import View, Item, Controller, EnumEditor, VGroup
 from envisage.api import Plugin, contributes_to
 from pyface.api import ImageResource
@@ -83,7 +83,24 @@ class ScatterplotHandler(Controller, ViewHandlerMixin):
 
 
 class ScatterplotPluginView(ScatterplotView, PluginViewMixin):
-    handler_factory = Callable(ScatterplotHandler)
+    handler_factory = Callable(ScatterplotHandler, transient=True)
+
+    def code(self, name, op_name, ex_name):
+        output = "%s = " % name
+        output += "flow.ScatterplotView(\n"
+        for trait in self.traits():
+            t = self.trait(trait)
+            if t and not t.transient and not t.is_trait_type(Delegate):
+                value = getattr(self, trait)
+                if value is not None and value != '' and value is not Undefined:
+                    if isinstance(value, basestring):
+                        output += "\t%s = '%s',\n" % (trait, value)
+                    else:
+                        output += "\t%s = %s,\n" % (trait, value)
+        output += ")\n"
+        output += "%s.plot(%s)" % (name, ex_name)
+
+        return output
 
 @provides(IViewPlugin)
 class ScatterplotPlugin(Plugin):

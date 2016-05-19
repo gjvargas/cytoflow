@@ -21,7 +21,7 @@ Created on Apr 25, 2015
 @author: brian
 '''
 
-from traits.api import provides, Callable
+from traits.api import provides, Callable, Undefined, Delegate
 from traitsui.api import View, Item, EnumEditor, Controller, VGroup, TextEditor
 from envisage.api import Plugin, contributes_to
 from pyface.api import ImageResource
@@ -88,16 +88,51 @@ class PolygonViewHandler(Controller, ViewHandlerMixin):
 
 @provides(ISelectionView)
 class PolygonSelectionView(PolygonSelection, PluginViewMixin):
-    handler_factory = Callable(PolygonViewHandler)
+    handler_factory = Callable(PolygonViewHandler, transient=True)
     
     def plot_wi(self, wi):
         self.plot(wi.previous.result)
     
+    def code(self, name, op_name, ex_name):
+        output = "%s = " % name
+        output += "flow.operations.polygon.PolygonSelection(\n"
+        for trait in self.traits():
+            t = self.trait(trait)
+            if t and not t.transient and not t.is_trait_type(Delegate):
+                value = getattr(self, trait)
+                if value is not None and value != '' and value is not Undefined:
+                    if isinstance(value, basestring):
+                        output += "\t%s = '%s',\n" % (trait, value)
+                    elif isinstance(value, PolygonOp):
+                        output += "\top = %s,\n" % (op_name)
+                    else:
+                        output += "\t%s = %s,\n" % (trait, value)
+        output += ")\n"
+        output += "%s.plot(%s)" % (name, ex_name)
+
+        return output
+
 class PolygonPluginOp(PolygonOp, PluginOpMixin):
-    handler_factory = Callable(PolygonHandler)
+    handler_factory = Callable(PolygonHandler, transient=True)
     
     def default_view(self, **kwargs):
         return PolygonSelectionView(op = self, **kwargs)
+
+    def code(self, name):
+        output = "%s = " % name
+        output += "flow.PolygonOp(\n"
+        for trait in self.traits():
+            t = self.trait(trait)
+            if t and not t.transient:
+                value = getattr(self, trait)
+                if value is not None and value != '' and value is not Undefined:
+                    if isinstance(value, basestring):
+                        output += "\t%s = '%s',\n" % (trait, value)
+                    else:
+                        output += "\t%s = %s,\n" % (trait, value)
+        output += ")"
+
+        return output
 
 @provides(IOperationPlugin)
 class PolygonPlugin(Plugin):

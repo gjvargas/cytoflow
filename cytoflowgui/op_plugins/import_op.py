@@ -31,7 +31,7 @@ Created on Mar 15, 2015
 
 from traitsui.api import View, Item, Controller, TextEditor
 from traits.api import Button, Property, cached_property, provides, Callable, \
-                       Bool
+                       Bool, Undefined
 from pyface.api import OK as PyfaceOK
 from envisage.api import Plugin
 
@@ -113,7 +113,7 @@ class ImportHandler(Controller, OpHandlerMixin):
 
 @provides(IOperation)
 class ImportPluginOp(ImportOp, PluginOpMixin):
-    handler_factory = Callable(ImportHandler)
+    handler_factory = Callable(ImportHandler, transient=True)
     events = util.PositiveInt(0, allow_zero = True, transient = True, status = True)
     
     def apply(self, experiment = None):
@@ -121,7 +121,38 @@ class ImportPluginOp(ImportOp, PluginOpMixin):
         self.events = len(ret.data)
 
         return ret
-    
+
+    def code(self, name):
+        output = "%s = " % name
+        output += "flow.ImportOp(\n"
+        for trait in self.traits():
+            t = self.trait(trait)
+            if t and not t.transient:
+                value = getattr(self, trait)
+                if value and value is not Undefined:
+
+                    if isinstance(value, basestring):
+                        output += "\t%s = '%s',\n" % (trait, value)
+
+                    elif trait == "tubes":
+                        output += "\t%s = [\n" % trait
+                        for tube in value:
+                            output += "\t\tflow.Tube(\n"
+                            for tube_trait in vars(tube):
+                                tube_value = getattr(tube, tube_trait)
+                                if tube_value:
+                                    if isinstance(tube_value, basestring):
+                                        output += "\t\t\t%s = '%s',\n" % (tube_trait, tube_value)
+                                    else:
+                                        output += "\t\t\t%s = %s,\n" % (tube_trait, tube_value)
+                            output += "\t\t),\n"
+                        output += "\t],\n"
+
+                    else:
+                        output += "\t%s = %s,\n" % (trait, value)
+        output += ")"
+
+        return output
             
 @provides(IOperationPlugin)
 class ImportPlugin(Plugin):

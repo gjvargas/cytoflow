@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from traits.api import provides, Callable
+from traits.api import provides, Callable, Undefined, Delegate
 from traitsui.api import View, Item, EnumEditor, Controller, VGroup, TextEditor
 from envisage.api import Plugin, contributes_to
 from pyface.api import ImageResource
@@ -79,7 +79,26 @@ class RangeViewHandler(Controller, ViewHandlerMixin):
 
 @provides(ISelectionView)
 class RangeSelectionView(RangeSelection, PluginViewMixin):
-    handler_factory = Callable(RangeViewHandler)
+    handler_factory = Callable(RangeViewHandler, transient=True)
+
+    def code(self, name, op_name, ex_name):
+        output = "%s = " % name
+        output += "flow.operations.range.RangeSelection(\n"
+        for trait in self.traits():
+            t = self.trait(trait)
+            if t and not t.transient and not t.is_trait_type(Delegate):
+                value = getattr(self, trait)
+                if value is not None and value != '' and value is not Undefined:
+                    if isinstance(value, basestring):
+                        output += "\t%s = '%s',\n" % (trait, value)
+                    elif isinstance(value, RangeOp):
+                        output += "\top = %s,\n" % (op_name)
+                    else:
+                        output += "\t%s = %s,\n" % (trait, value)
+        output += ")\n"
+        output += "%s.plot(%s)" % (name, ex_name)
+
+        return output
     
     def plot_wi(self, wi):
         self.plot(wi.previous.result)
@@ -87,10 +106,26 @@ class RangeSelectionView(RangeSelection, PluginViewMixin):
     
 @provides(IOperation)
 class RangePluginOp(RangeOp, PluginOpMixin):
-    handler_factory = Callable(RangeHandler)
+    handler_factory = Callable(RangeHandler, transient=True)
     
     def default_view(self, **kwargs):
         return RangeSelectionView(op = self, **kwargs)
+
+    def code(self, name):
+        output = "%s = " % name
+        output += "flow.RangeOp(\n"
+        for trait in self.traits():
+            t = self.trait(trait)
+            if t and not t.transient:
+                value = getattr(self, trait)
+                if value is not None and value != '' and value is not Undefined:
+                    if isinstance(value, basestring):
+                        output += "\t%s = '%s',\n" % (trait, value)
+                    else:
+                        output += "\t%s = %s,\n" % (trait, value)
+        output += ")"
+
+        return output
 
 @provides(IOperationPlugin)
 class RangePlugin(Plugin):

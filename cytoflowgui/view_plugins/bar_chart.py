@@ -21,7 +21,7 @@ Created on Feb 24, 2015
 @author: brian
 """
 
-from traits.api import provides, Callable, Dict
+from traits.api import provides, Callable, Dict, Undefined, Delegate
 from traitsui.api import View, Item, VGroup, Controller, EnumEditor
 from envisage.api import Plugin, contributes_to
 from pyface.api import ImageResource
@@ -109,7 +109,24 @@ class BarChartHandler(Controller, ViewHandlerMixin):
                                                   background_color = "#ff9191"))))
     
 class BarChartPluginView(BarChartView, PluginViewMixin):
-    handler_factory = Callable(BarChartHandler)
+    handler_factory = Callable(BarChartHandler, transient=True)
+
+    def code(self, name, op_name, ex_name):
+        output = "%s = " % name
+        output += "flow.BarChartView(\n"
+        for trait in self.traits():
+            t = self.trait(trait)
+            if t and not t.transient and not t.is_trait_type(Delegate):
+                value = getattr(self, trait)
+                if value is not None and value != '' and value is not Undefined:
+                    if isinstance(value, basestring):
+                        output += "\t%s = '%s',\n" % (trait, value)
+                    else:
+                        output += "\t%s = %s,\n" % (trait, value)
+        output += ")\n"
+        output += "%s.plot(%s)" % (name, ex_name)
+
+        return output
 
 @provides(IViewPlugin)
 class BarChartPlugin(Plugin):

@@ -23,7 +23,7 @@ Created on Oct 9, 2015
 
 from traitsui.api import View, Item, EnumEditor, Controller, VGroup, TextEditor
 from envisage.api import Plugin, contributes_to
-from traits.api import provides, Callable
+from traits.api import provides, Callable, Undefined, Delegate
 from pyface.api import ImageResource
 
 from cytoflow.operations.binning import BinningOp, BinningView
@@ -52,10 +52,26 @@ class BinningHandler(Controller, OpHandlerMixin):
                     shared_op_traits)
 
 class BinningPluginOp(BinningOp, PluginOpMixin):
-    handler_factory = Callable(BinningHandler)
+    handler_factory = Callable(BinningHandler, transient=True)
     
     def default_view(self, **kwargs):
         return BinningPluginView(op = self, **kwargs)
+
+    def code(self, name):
+        output = "%s = " % name
+        output += "flow.BinningOp(\n"
+        for trait in self.traits():
+            t = self.trait(trait)
+            if t and not t.transient:
+                value = getattr(self, trait)
+                if value is not None and value != ''  and value is not Undefined:
+                    if isinstance(value, basestring):
+                        output += "\t%s = '%s',\n" % (trait, value)
+                    else:
+                        output += "\t%s = %s,\n" % (trait, value)
+        output += ")"
+
+        return output
 
 class BinningViewHandler(Controller, ViewHandlerMixin):
     def default_traits_view(self):
@@ -88,10 +104,29 @@ class BinningViewHandler(Controller, ViewHandlerMixin):
 
 @provides(IView)
 class BinningPluginView(BinningView, PluginViewMixin):
-    handler_factory = Callable(BinningViewHandler)
+    handler_factory = Callable(BinningViewHandler, transient=True)
     
     def plot_wi(self, wi):
         self.plot(wi.previous.result)
+
+    def code(self, name, op_name, ex_name):
+        output = "%s = " % name
+        output += "flow.operations.binning.BinningView(\n"
+        for trait in self.traits():
+            t = self.trait(trait)
+            if t and not t.transient and not t.is_trait_type(Delegate):
+                value = getattr(self, trait)
+                if value is not None and value != '' and value is not Undefined:
+                    if isinstance(value, basestring):
+                        output += "\t%s = '%s',\n" % (trait, value)
+                    elif isinstance(value, BinningOp):
+                        output += "\top = %s,\n" % (op_name)
+                    else:
+                        output += "\t%s = %s,\n" % (trait, value)
+        output += ")\n"
+        output += "%s.plot(%s)" % (name, ex_name)
+
+        return output
 
 @provides(IOperationPlugin)
 class BinningPlugin(Plugin):
